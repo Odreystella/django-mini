@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Bread(models.Model):
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=32, unique=True)
     quantity = models.PositiveSmallIntegerField()
     price = models.PositiveIntegerField()
 
@@ -14,7 +14,7 @@ class Bread(models.Model):
 
 
 class Topping(models.Model):
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=32, unique=True)
     quantity = models.PositiveSmallIntegerField()
     price = models.PositiveIntegerField()
 
@@ -26,7 +26,7 @@ class Topping(models.Model):
 
 
 class Cheese(models.Model):
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=32, unique=True)
     quantity = models.PositiveSmallIntegerField()
     price = models.PositiveIntegerField()
 
@@ -38,7 +38,7 @@ class Cheese(models.Model):
 
 
 class Sauce(models.Model):
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=32, unique=True)
     quantity = models.PositiveSmallIntegerField()
     price = models.PositiveIntegerField()
 
