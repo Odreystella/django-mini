@@ -220,3 +220,75 @@ class CheeseDetailView(View):
                 return JsonResponse({'message': 'CHEESE_DELETED'}, status=200)
         except Cheese.DoesNotExist:
             return JsonResponse({'message': 'CHEESE_NOT_FOUND'}, status=404)
+
+
+class SauceView(View):
+    """
+    소스 추가하기
+    """
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            if Sauce.objects.filter(name=data['name']).exists():
+                return JsonResponse(
+                    {'message': 'SAUCE_ALREADY_EXIST'},
+                    status=400)
+            Sauce.objects.create(
+                    name=data['name'],
+                    quantity=data['quantity'],
+                    price=data['price'])
+            return JsonResponse({'message': 'SAUCE_CREATED'}, status=201)
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+
+
+class SauceListView(View):
+    """
+    소스 재고 목록 보여주기(이름, 재고 숫자, 가격)
+    """
+    def get(self, request):
+        sauces = Sauce.objects.all()
+        if not sauces:
+            return JsonResponse({'message': 'SAUCES_NOT_FOUND'}, status=404)
+        sauces = {
+            'sauces': [
+                {
+                    'name': sauce.name,
+                    'stocks': sauce.quantity,
+                    'per_price': sauce.price
+                }
+                for sauce in sauces
+            ]
+        }
+        return JsonResponse(sauces, status=200)
+
+
+class SauceDetailView(View):
+    """
+    소스 정보 수정하기
+    소스 정보 삭제하기
+    """
+    def put(self, request, name):
+        try:
+            data = json.loads(request.body)
+            sauce = Sauce.objects.get(name=name)
+            if sauce:
+                if data['quantity']:
+                    sauce.quantity = data['quantity']
+                if data['price']:
+                    sauce.price = data['price']
+                sauce.save()
+            return JsonResponse({'message': 'SAUCE_UPDATED'}, status=200)
+        except Sauce.DoesNotExist:
+            return JsonResponse({'message': 'SAUCE_NOT_FOUND'}, status=404)
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+
+    def delete(self, request, name):
+        try:
+            sauce = Sauce.objects.get(name=name)
+            if sauce:
+                sauce.delete()
+                return JsonResponse({'message': 'SAUCE_DELETED'}, status=200)
+        except Sauce.DoesNotExist:
+            return JsonResponse({'message': 'SAUCE_NOT_FOUND'}, status=404)
