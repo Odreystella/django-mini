@@ -11,4 +11,7 @@ urlpatterns = [
     path("topping/", views.ToppingView.as_view()),
     path("topping/list/", views.ToppingListView.as_view()),
     path("topping/<str:name>/", views.ToppingDetailView.as_view()),
+    path("cheese/", views.CheeseView.as_view()),
+    path("cheese/list/", views.CheeseListView.as_view()),
+    path("cheese/<str:name>/", views.CheeseDetailView.as_view()),
 ]

@@ -148,3 +148,75 @@ class ToppingDetailView(View):
                 return JsonResponse({'message': 'TOPPING_DELETED'}, status=200)
         except Topping.DoesNotExist:
             return JsonResponse({'message': 'TOPPING_NOT_FOUND'}, status=404)
+
+
+class CheeseView(View):
+    """
+    치즈 추가하기
+    """
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            if Cheese.objects.filter(name=data['name']).exists():
+                return JsonResponse(
+                    {'message': 'CHEESE_ALREADY_EXIST'},
+                    status=400)
+            Cheese.objects.create(
+                    name=data['name'],
+                    quantity=data['quantity'],
+                    price=data['price'])
+            return JsonResponse({'message': 'CHEESE_CREATED'}, status=201)
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+
+
+class CheeseListView(View):
+    """
+    치즈 재고 목록 보여주기(이름, 재고 숫자, 가격)
+    """
+    def get(self, request):
+        cheeses = Cheese.objects.all()
+        if not cheeses:
+            return JsonResponse({'message': 'CHEESES_NOT_FOUND'}, status=404)
+        cheeses = {
+            'cheeses': [
+                {
+                    'name': cheese.name,
+                    'stocks': cheese.quantity,
+                    'per_price': cheese.price
+                }
+                for cheese in cheeses
+            ]
+        }
+        return JsonResponse(cheeses, status=200)
+
+
+class CheeseDetailView(View):
+    """
+    치즈 정보 수정하기
+    치즈 정보 삭제하기
+    """
+    def put(self, request, name):
+        try:
+            data = json.loads(request.body)
+            cheese = Cheese.objects.get(name=name)
+            if cheese:
+                if data['quantity']:
+                    cheese.quantity = data['quantity']
+                if data['price']:
+                    cheese.price = data['price']
+                cheese.save()
+            return JsonResponse({'message': 'CHEESE_UPDATED'}, status=200)
+        except Cheese.DoesNotExist:
+            return JsonResponse({'message': 'CHEESE_NOT_FOUND'}, status=404)
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
+
+    def delete(self, request, name):
+        try:
+            cheese = Cheese.objects.get(name=name)
+            if cheese:
+                cheese.delete()
+                return JsonResponse({'message': 'CHEESE_DELETED'}, status=200)
+        except Cheese.DoesNotExist:
+            return JsonResponse({'message': 'CHEESE_NOT_FOUND'}, status=404)
