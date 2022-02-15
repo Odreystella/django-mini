@@ -9,6 +9,9 @@ class Bread(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        db_table = "bread"
+
 
 class Topping(models.Model):
     name = models.CharField(max_length=32)
@@ -17,6 +20,9 @@ class Topping(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        db_table = "toppings"
 
 
 class Cheese(models.Model):
@@ -27,6 +33,9 @@ class Cheese(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        db_table = "cheeses"
+
 
 class Sauce(models.Model):
     name = models.CharField(max_length=32)
@@ -36,6 +45,9 @@ class Sauce(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        db_table = "sauces"
+
 
 class Sandwich(models.Model):
     bread = models.ForeignKey(Bread, on_delete=models.CASCADE)
@@ -43,3 +55,6 @@ class Sandwich(models.Model):
     cheese = models.ForeignKey(Cheese, on_delete=models.CASCADE)
     sauces = models.ManyToManyField(Sauce)
     price = models.PositiveSmallIntegerField()
+
+    class Meta:
+        db_table = "sandwiches"
