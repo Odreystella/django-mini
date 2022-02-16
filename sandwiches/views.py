@@ -368,8 +368,8 @@ class SandwichListView(View):
         topping = request.GET.get('topping')
         cheese = request.GET.get('cheese')
         sauce = request.GET.get('sauce')
-        start_price = int(request.GET.get('start_price'))
-        end_price = int(request.GET.get('end_price'))
+        min_price = int(request.GET.get('min_price', 0))
+        max_price = int(request.GET.get('max_price', 0))
         if bread:
             sandwiches = Sandwich.objects.filter(bread__name__icontains=bread)\
                 [offset:offset+limit]
@@ -382,12 +382,12 @@ class SandwichListView(View):
         if sauce:
             sandwiches = Sandwich.objects.filter(sauces__name__icontains=sauce)\
                 [offset:offset+limit]
-        if start_price < 0 or end_price < 0:
+        if min_price < 0 or max_price < 0:
             return JsonResponse({'message': 'INVALID_VALUE'}, status=400)
-        if start_price > end_price:
+        if min_price > max_price:
             return JsonResponse({'message': 'INVALID_RANGE'}, status=400)
-        if start_price and end_price:
-            sandwiches = Sandwich.objects.filter(price__range=(start_price, end_price))\
+        if min_price and max_price:
+            sandwiches = Sandwich.objects.filter(price__range=(min_price, max_price))\
                 [offset:offset+limit]
         if not sandwiches:
             return JsonResponse({'message': 'NOT_FOUND_SANDWICH'}, status=404)
