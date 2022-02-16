@@ -2,6 +2,8 @@ import json
 
 from django.views import View
 from django.http.response import JsonResponse
+from django.db import transaction
+from django.db.models import Q
 
 from .models import Sandwich, Bread, Topping, Cheese, Sauce
 
@@ -15,8 +17,7 @@ class BreadView(View):
             data = json.loads(request.body)
             if Bread.objects.filter(name=data['name']).exists():
                 return JsonResponse(
-                    {'message': 'BREAD_ALREADY_EXIST'},
-                    status=400)
+                    {'message': 'BREAD_ALREADY_EXIST'}, status=400)
             Bread.objects.create(
                     name=data['name'],
                     quantity=data['quantity'],
@@ -87,8 +88,7 @@ class ToppingView(View):
             data = json.loads(request.body)
             if Topping.objects.filter(name=data['name']).exists():
                 return JsonResponse(
-                    {'message': 'TOPPING_ALREADY_EXIST'},
-                    status=400)
+                    {'message': 'TOPPING_ALREADY_EXIST'}, status=400)
             Topping.objects.create(
                     name=data['name'],
                     quantity=data['quantity'],
@@ -159,8 +159,7 @@ class CheeseView(View):
             data = json.loads(request.body)
             if Cheese.objects.filter(name=data['name']).exists():
                 return JsonResponse(
-                    {'message': 'CHEESE_ALREADY_EXIST'},
-                    status=400)
+                    {'message': 'CHEESE_ALREADY_EXIST'}, status=400)
             Cheese.objects.create(
                     name=data['name'],
                     quantity=data['quantity'],
@@ -231,8 +230,7 @@ class SauceView(View):
             data = json.loads(request.body)
             if Sauce.objects.filter(name=data['name']).exists():
                 return JsonResponse(
-                    {'message': 'SAUCE_ALREADY_EXIST'},
-                    status=400)
+                    {'message': 'SAUCE_ALREADY_EXIST'}, status=400)
             Sauce.objects.create(
                     name=data['name'],
                     quantity=data['quantity'],
@@ -292,3 +290,123 @@ class SauceDetailView(View):
                 return JsonResponse({'message': 'SAUCE_DELETED'}, status=200)
         except Sauce.DoesNotExist:
             return JsonResponse({'message': 'SAUCE_NOT_FOUND'}, status=404)
+
+
+class SandwichView(View):
+    """
+    샌드위치 만들기
+    """
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            bread = data.get('bread')
+            toppings = data.get('toppings')
+            cheese = data.get('cheese')
+            sauces = data.get('sauces')
+            bread_obj = Bread.objects.get(name=bread[0])
+            toppings_obj = [Topping.objects.get(name=topping) for topping in toppings]
+            toppings_price = [topping.price for topping in toppings_obj]
+            cheese_obj = Cheese.objects.get(name=cheese[0])
+            sauces_obj = [Sauce.objects.get(name=sauce) for sauce in sauces]
+            sacues_price = [sauce.price for sauce in sauces_obj]
+            if not (bread and toppings and cheese and sauces):
+                return JsonResponse(
+                    {'message': 'REQUIRED_MORE_INGREDIENT'}, status=400)
+            if bread_obj.quantity == 0 or len(bread) >= 2:
+                return JsonResponse(
+                    {'message': 'INSUFFICIENT_BREAD'}, status=400)
+            if any(topping_obj.quantity == 0 for topping_obj in toppings_obj) or len(toppings) >= 3:
+                return JsonResponse(
+                    {'message': 'INSUFFICIENT_TOPPINGS'}, status=400)
+            if cheese_obj.quantity == 0 or len(cheese) >= 2:
+                return JsonResponse(
+                    {'message': 'INSUFFICIENT_CHEESE'}, status=400)
+            if any(sauce_obj.quantity == 0 for sauce_obj in sauces_obj) or len(sauces) >= 3:
+                return JsonResponse(
+                    {'message': 'INSUFFICIENT_SAUCE'}, status=400)
+            with transaction.atomic():
+                sandwich = Sandwich.objects.create(
+                    bread=bread_obj,
+                    cheese=cheese_obj,
+                    price=bread_obj.price+cheese_obj.price+sum(toppings_price)+sum(sacues_price)
+                )
+                sandwich = Sandwich.objects.select_related('bread', 'cheese').get(pk=sandwich.pk)
+                sandwich.toppings.add(*toppings_obj)
+                sandwich.sauces.add(*sauces_obj)
+                sandwich.bread.quantity -= 1
+                sandwich.bread.save()
+                sandwich.cheese.quantity -= 1
+                sandwich.cheese.save()
+                for topping_obj in sandwich.toppings.all():
+                    topping_obj.quantity -= 1
+                    topping_obj.save()
+                for sauce_obj in sandwich.sauces.all():
+                    sauce_obj.quantity -= 1
+                    sauce_obj.save()
+            return JsonResponse({'message': 'SANDWICH_CREATED'}, status=201)
+        except Bread.DoesNotExist:
+            return JsonResponse({'message': 'BREAD_NOT_FOUND'}, status=404)
+        except Topping.DoesNotExist:
+            return JsonResponse({'message': 'TOPPING_NOT_FOUND'}, status=404)
+        except Cheese.DoesNotExist:
+            return JsonResponse({'message': 'CHEESE_NOT_FOUND'}, status=404)
+        except Sauce.DoesNotExist:
+            return JsonResponse({'message': 'SAUCE_NOT_FOUND'}, status=404)
+
+
+class SandwichListView(View):
+    """
+    샌드위치 목록 보여주기(1페이지당 10개씩, 재료/가격별 필터링)
+    """
+    def get(self, request):
+        page = int(request.GET.get('page', 1))
+        limit = 10
+        offset = (page - 1) * limit
+        bread = request.GET.get('bread')
+        cheese = request.GET.get('cheese')
+        sandwiches = Sandwich.objects.all()[offset:offset+limit]
+        if bread or cheese:
+            sandwiches = Sandwich.objects.filter(Q(bread__name__icontains=bread)|\
+            Q(cheese__name__icontains=cheese))[offset:offset+limit]
+        result = [sandwich.pk for sandwich in sandwiches]
+        return JsonResponse({"result": result}, status=200)
+
+
+class SandwichDetailView(View):
+    """
+    샌드위치 상세보기
+    샌드위치 삭제하기
+    """
+    def get(self, request, pk):
+        try:
+            sandwich = Sandwich.objects.get(pk=pk)
+            result = {
+                "sandwich": {
+                    "bread": {
+                        "name": sandwich.bread.name,
+                        "price": sandwich.bread.price,
+                    },
+                    "toppings": [
+                        {
+                            "name": topping.name,
+                            "price": topping.price,
+                        } for topping in sandwich.toppings.all()
+                    ],
+                    "cheese": {
+                        "name": sandwich.cheese.name,
+                        "price": sandwich.cheese.price,
+                    },
+                    "sauces": [
+                        {
+                            "name": sauce.name,
+                            "price": sauce.price,
+                        } for sauce in sandwich.sauces.all()
+                    ],
+                }
+            }
+            return JsonResponse(result, status=404)
+        except Sandwich.DoesNotExist:
+            return JsonResponse({'message': 'SANDWICH_NOT_FOUND'}, status=404)
+
+    def delete(self, request, pk):
+        pass

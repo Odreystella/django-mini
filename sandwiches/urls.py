@@ -17,4 +17,7 @@ urlpatterns = [
     path("sauce/", views.SauceView.as_view()),
     path("sauce/list/", views.SauceListView.as_view()),
     path("sauce/<str:name>/", views.SauceDetailView.as_view()),
+    path("", views.SandwichView.as_view()),
+    path("list/", views.SandwichListView.as_view()),
+    path("<int:pk>/", views.SandwichDetailView.as_view()),
 ]
