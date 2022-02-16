@@ -425,6 +425,7 @@ class SandwichDetailView(View):
                             'price': sauce.price,
                         } for sauce in sandwich.sauces.all()
                     ],
+                    'price': sandwich.price
                 }
             }
             return JsonResponse(result, status=404)
