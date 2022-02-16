@@ -315,13 +315,15 @@ class SandwichView(View):
             if bread_obj.quantity == 0 or len(bread) >= 2:
                 return JsonResponse(
                     {'message': 'INSUFFICIENT_BREAD'}, status=400)
-            if any(topping_obj.quantity == 0 for topping_obj in toppings_obj) or len(toppings) >= 3:
+            if any(topping_obj.quantity == 0 for topping_obj in toppings_obj) \
+                or len(toppings) >= 3:
                 return JsonResponse(
                     {'message': 'INSUFFICIENT_TOPPINGS'}, status=400)
             if cheese_obj.quantity == 0 or len(cheese) >= 2:
                 return JsonResponse(
                     {'message': 'INSUFFICIENT_CHEESE'}, status=400)
-            if any(sauce_obj.quantity == 0 for sauce_obj in sauces_obj) or len(sauces) >= 3:
+            if any(sauce_obj.quantity == 0 for sauce_obj in sauces_obj) or \
+                len(sauces) >= 3:
                 return JsonResponse(
                     {'message': 'INSUFFICIENT_SAUCE'}, status=400)
             with transaction.atomic():
@@ -363,13 +365,34 @@ class SandwichListView(View):
         limit = 10
         offset = (page - 1) * limit
         bread = request.GET.get('bread')
+        topping = request.GET.get('topping')
         cheese = request.GET.get('cheese')
-        sandwiches = Sandwich.objects.all()[offset:offset+limit]
-        if bread or cheese:
-            sandwiches = Sandwich.objects.filter(Q(bread__name__icontains=bread)|\
-            Q(cheese__name__icontains=cheese))[offset:offset+limit]
-        result = [sandwich.pk for sandwich in sandwiches]
-        return JsonResponse({"result": result}, status=200)
+        sauce = request.GET.get('sauce')
+        start_price = int(request.GET.get('start_price'))
+        end_price = int(request.GET.get('end_price'))
+        if bread:
+            sandwiches = Sandwich.objects.filter(bread__name__icontains=bread)\
+                [offset:offset+limit]
+        if topping:
+            sandwiches = Sandwich.objects.filter(toppings__name__icontains=topping)\
+                [offset:offset+limit]
+        if cheese:
+            sandwiches = Sandwich.objects.filter(cheese__name__icontains=cheese)\
+                [offset:offset+limit]
+        if sauce:
+            sandwiches = Sandwich.objects.filter(sauces__name__icontains=sauce)\
+                [offset:offset+limit]
+        if start_price < 0 or end_price < 0:
+            return JsonResponse({'message': 'INVALID_VALUE'}, status=400)
+        if start_price > end_price:
+            return JsonResponse({'message': 'INVALID_RANGE'}, status=400)
+        if start_price and end_price:
+            sandwiches = Sandwich.objects.filter(price__range=(start_price, end_price))\
+                [offset:offset+limit]
+        if not sandwiches:
+            return JsonResponse({'message': 'NOT_FOUND_SANDWICH'}, status=404)
+        return JsonResponse({'sandwich': [
+            {'id': sandwich.pk} for sandwich in sandwiches]}, status=200)
 
 
 class SandwichDetailView(View):
@@ -381,25 +404,25 @@ class SandwichDetailView(View):
         try:
             sandwich = Sandwich.objects.get(pk=pk)
             result = {
-                "sandwich": {
-                    "bread": {
-                        "name": sandwich.bread.name,
-                        "price": sandwich.bread.price,
+                'sandwich': {
+                    'bread': {
+                        'name': sandwich.bread.name,
+                        'price': sandwich.bread.price,
                     },
-                    "toppings": [
+                    'toppings': [
                         {
-                            "name": topping.name,
-                            "price": topping.price,
+                            'name': topping.name,
+                            'price': topping.price,
                         } for topping in sandwich.toppings.all()
                     ],
-                    "cheese": {
-                        "name": sandwich.cheese.name,
-                        "price": sandwich.cheese.price,
+                    'cheese': {
+                        'name': sandwich.cheese.name,
+                        'price': sandwich.cheese.price,
                     },
-                    "sauces": [
+                    'sauces': [
                         {
-                            "name": sauce.name,
-                            "price": sauce.price,
+                            'name': sauce.name,
+                            'price': sauce.price,
                         } for sauce in sandwich.sauces.all()
                     ],
                 }
